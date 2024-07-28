@@ -114,14 +114,14 @@ const FeedingScreen = () => {
       saveFeedingRecord(currentDateTime, foodAmount, notes);
       setFoodAmount('normal');
       setNotes('');
-      setCurrentDateTime(new Date()); // Reset to current time
+      setCurrentDateTime(new Date());
     }
   };
 
   const scheduleNotification = async () => {
     await cancelNotification();
 
-    const triggerInterval = 600; // Trigger every 10 minutes (600 seconds)
+    const triggerInterval = 60;
 
     await Notifications.scheduleNotificationAsync({
       content: {
@@ -181,6 +181,7 @@ const FeedingScreen = () => {
   );
 
   return (
+    
     <TouchableWithoutFeedback onPress={handleKeyboardDismiss}>
       <View style={styles.container}>
         <FlatList
@@ -188,7 +189,7 @@ const FeedingScreen = () => {
             <>
               <View style={styles.section}>
                 <View style={styles.labelContainer}>
-                  <Text style={styles.label}>Date:</Text>
+                  <Text style={styles.label}>Date</Text>
                   <Button title="Set Date" onPress={() => setIsDatePickerVisible(true)} />
                 </View>
                 <Text style={styles.value}>{currentDateTime ? currentDateTime.toLocaleString() : 'Not set'}</Text>
@@ -196,25 +197,24 @@ const FeedingScreen = () => {
 
               <View style={styles.section}>
                 <View style={styles.labelContainer}>
-                  <Text style={styles.label}>Food Amount:</Text>
+                  <Text style={styles.label}>Amount</Text>
                   <Button title="Select Food Amount" onPress={handleOpenPickerModal} />
                 </View>
                 <Text style={styles.value}>{foodAmount.charAt(0).toUpperCase() + foodAmount.slice(1)}</Text>
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.label}>Additional Notes:</Text>
+                <Text style={styles.label}>Notes</Text>
                 <TextInput
                   style={styles.textarea}
                   multiline
-                  numberOfLines={4}
+                  numberOfLines={3}
                   value={notes}
                   onChangeText={setNotes}
                   placeholder="Enter any additional notes..."
                 />
               </View>
 
-              <Button style={styles.buttonFeed} title="Log Feeding" onPress={handleLogFeeding} color="#007BFF" />
             </>
           }
           data={feedingRecords}
@@ -223,6 +223,10 @@ const FeedingScreen = () => {
           ListFooterComponent={loading && <ActivityIndicator size="large" color="#007BFF" />}
           contentContainerStyle={styles.container}
         />
+                      <View style={styles.logButtonContainer}>
+
+              <Button style={styles.buttonFeed} title="Log Feeding" onPress={handleLogFeeding} color="#007BFF" />
+              </View>
 
         <DateTimePickerModal
           isVisible={isDatePickerVisible}
@@ -231,7 +235,6 @@ const FeedingScreen = () => {
           onCancel={() => setIsDatePickerVisible(false)}
         />
 
-        {/* Food Amount Picker Modal */}
         <Modal
           transparent={true}
           animationType="slide"
@@ -256,6 +259,7 @@ const FeedingScreen = () => {
               >
                 <Text style={styles.modalButtonText}>Okay</Text>
               </TouchableOpacity>
+              
             </View>
           </View>
         </Modal>
@@ -271,8 +275,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#f7f7f7',
   },
 
-  buttonFeed: {
-    color:'red'
+  buttonFeed: {
+    fontSize:30,
+    marginBottom:30,
+    fontFamily:'Inter'
+  },
+  logButtonContainer: {
+    backgroundColor:'#009',
+    padding:8,
+    margin: 14,
+    borderRadius: 8
+
   },
   title: {
     fontSize: 28,
@@ -311,9 +324,9 @@ const styles = StyleSheet.create({
   },
 
   itemText: {
-fontFamily: 'Inter',
-fontWeight:'500',
-color:'white'
+    fontFamily: 'Inter',
+    fontWeight:'500',
+    color:'white'
   },
   textarea: {
     height: 100,

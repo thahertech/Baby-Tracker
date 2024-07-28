@@ -1,8 +1,7 @@
 // components/SlidingPanel.js
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
-import { PanGestureHandler, State } from 'react-native-gesture-handler';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -10,7 +9,7 @@ const SlidingPanel = ({ isVisible, toggleVisibility, children }) => {
   const translateY = useSharedValue(screenHeight);
 
   React.useEffect(() => {
-    translateY.value = isVisible ? withSpring(0, { damping: 2, stiffness: 100 }) : withSpring(screenHeight, { damping: 2, stiffness: 100 });
+    translateY.value = isVisible ? withSpring(0, { damping: 100, stiffness: 100 }) : withSpring(screenHeight, { damping: 100, stiffness: 100 });
   }, [isVisible]);
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -40,7 +39,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: '#fff',
-    height: screenHeight * 0.5, // Adjust height as needed
+    height: screenHeight * 0.5,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
@@ -53,7 +52,11 @@ const styles = StyleSheet.create({
   closeButton: {
     position: 'absolute',
     top: 10,
-    right: 10,
+    right: 20,
+    backgroundColor: '#ddd',
+    borderRadius: 8,
+    padding: 10,
+    zIndex: 1
   },
   closeText: {
     fontSize: 18,

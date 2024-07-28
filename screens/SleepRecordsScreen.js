@@ -4,6 +4,8 @@ import * as SQLite from 'expo-sqlite';
 import { useFocusEffect } from '@react-navigation/native';
 import moment from 'moment';
 import Svg, { Rect, Text as SvgText} from 'react-native-svg';
+import DateTimePicker from '@react-native-community/datetimepicker';
+
 
 
 const SleepRecordsScreen = () => {
@@ -14,6 +16,11 @@ const SleepRecordsScreen = () => {
   const [showGraph, setShowGraph] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
 const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+const [showStartPicker, setShowStartPicker] = useState(false);
+const [showEndPicker, setShowEndPicker] = useState(false);
+const [startDate, setStartDate] = useState(new Date());
+const [endDate, setEndDate] = useState(new Date());
+
 
 
   useEffect(() => {
@@ -31,13 +38,6 @@ const [isEditModalVisible, setIsEditModalVisible] = useState(false);
     initializeDatabase();
   }, []);
 
-  const handleEditPress = (record) => {
-    console.log("Edit button pressed for record:", record);  // Debugging line
-    setSelectedRecord(record);
-    setIsEditModalVisible(true);
-  };
-  
-  
   const handleSaveChanges = async () => {
     if (db && selectedRecord) {
       try {
@@ -52,7 +52,7 @@ const [isEditModalVisible, setIsEditModalVisible] = useState(false);
       }
     }
   };
-  
+
   const fetchSleepRecords = async () => {
     if (db) {
       setLoading(true);
@@ -87,7 +87,7 @@ const [isEditModalVisible, setIsEditModalVisible] = useState(false);
 
   const calculateSleepDuration = (start, end) => {
     if (start && end) {
-      const duration = (new Date(end) - new Date(start)) / 1000 / 60; // Duration in minutes
+      const duration = (new Date(end) - new Date(start)) / 1000 / 60;
       return `${Math.floor(duration)} minutes`;
     }
     return 'N/A';
@@ -95,7 +95,7 @@ const [isEditModalVisible, setIsEditModalVisible] = useState(false);
 
   const renderRecordItem = ({ item }) => (
     <View style={styles.recordCard}>
-      <Text style={styles.recordTitle}>Sleep Record {item.id}</Text>
+      <Text style={styles.recordTitle}>Sleep Session</Text>
       <Text style={styles.recordDetail}>Start: {new Date(item.start).toLocaleString()}</Text>
       <Text style={styles.recordDetail}>End: {item.end ? new Date(item.end).toLocaleString() : 'Still sleeping'}</Text>
       <Text style={styles.recordDetail}>Duration: {item.end ? calculateSleepDuration(item.start, item.end) : 'N/A'}</Text>
@@ -110,61 +110,58 @@ const [isEditModalVisible, setIsEditModalVisible] = useState(false);
       return <Text style={styles.emptyText}>No data available for the graph</Text>;
     }
 
-
     const graphWidth = 300;
-    const graphHeight = 200;
-    const barWidth = 20;
+    const graphHeight = 500;
+    const barWidth = 30;
     const barSpacing = 10; // Space between bars
     const xAxisHeight = 20; // Space for X-axis labels
-    const yAxisWidth = 30; // Space for Y-axis labels
-  
+    const yAxisWidth = 20; // Space for Y-axis labels
+
     const durations = sleepRecords.map(record => {
-      const duration = (new Date(record.end) - new Date(record.start)) / 1000 / 60; // Duration in minutes
+      const duration = (new Date(record.end) - new Date(record.start)) / 1000 / 60;
       return Math.floor(duration);
     });
-  
+
     const maxDuration = Math.max(...durations);
-  
+
     return (
       <Svg width={graphWidth + yAxisWidth} height={graphHeight + xAxisHeight} style={styles.graphContainer}>
-        {/* X-axis Labels */}
         {sleepRecords.map((record, index) => {
           const x = index * (barWidth + barSpacing) + yAxisWidth + (barWidth / 2);
           const labelX = x;
-          const labelY = graphHeight + 15; // Position below the graph
-  
+          const labelY = graphHeight + 15;
+
           return (
             <SvgText
               key={`x-axis-${record.id}`}
               x={labelX}
               y={labelY}
-              fontSize="10"
+              fontSize="8"
               fill="black"
               textAnchor="middle"
             >
-              {moment(record.start).format('D/M')}
+              {moment(record.start).format('D/MM')}
             </SvgText>
           );
         })}
-  
-        {/* Y-axis Labels */}
+
         <SvgText
           x={yAxisWidth / 2}
           y={graphHeight / 2}
-          fontSize="10"
+          fontSize="8"
           fill="black"
           textAnchor="middle"
           transform={`rotate(-90, ${yAxisWidth / 2}, ${graphHeight / 2})`}
         >
-          Duration (minutes)
+          Minutes
         </SvgText>
-  
+
         {/* Bars */}
         {sleepRecords.map((record, index) => {
           const x = index * (barWidth + barSpacing) + yAxisWidth;
           const duration = durations[index];
-          const barHeight = (duration / maxDuration) * graphHeight;
-  
+          const barHeight = (duration / maxDuration) * (0.8 * graphHeight);
+
           return (
             <React.Fragment key={record.id}>
               <Rect
@@ -189,53 +186,76 @@ const [isEditModalVisible, setIsEditModalVisible] = useState(false);
       </Svg>
     );
   };
-  
+
+  const handleEditPress = (record) => {
+    console.log("Edit button pressed for record:", record);
+    setSelectedRecord(record);
+    setStartDate(new Date(record.start));
+    setEndDate(new Date(record.end));
+    setIsEditModalVisible(true);
+  };
+
+  const onChangeStart = (event, selectedDate) => {
+    const currentDate = selectedDate || startDate;
+    setShowStartPicker(false);
+    setStartDate(currentDate);
+    setSelectedRecord({ ...selectedRecord, start: currentDate.toISOString() });
+  };
+
+  const onChangeEnd = (event, selectedDate) => {
+    const currentDate = selectedDate || endDate;
+    setShowEndPicker(false);
+    setEndDate(currentDate);
+    setSelectedRecord({ ...selectedRecord, end: currentDate.toISOString() });
+  };
+
   const renderEditModal = () => (
     <Modal
       visible={isEditModalVisible}
       animationType="slide"
       transparent={true}
-      onRequestClose={() => {
-        console.log("Modal closed");  // Debugging line
-        setIsEditModalVisible(false);
-      }}
+      onRequestClose={() => setIsEditModalVisible(false)}
     >
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Edit Sleep Record</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Start Time"
-            value={selectedRecord?.start || ''}
-            onChangeText={(text) => {
-              console.log("Start Time changed:", text);  // Debugging line
-              setSelectedRecord({ ...selectedRecord, start: text });
-            }}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="End Time"
-            value={selectedRecord?.end || ''}
-            onChangeText={(text) => {
-              console.log("End Time changed:", text);  // Debugging line
-              setSelectedRecord({ ...selectedRecord, end: text });
-            }}
-          />
-          <Button title="Save Changes" onPress={() => {
-            console.log("Save Changes pressed");  // Debugging line
-            handleSaveChanges();
-          }} />
-          <Button title="Cancel" onPress={() => {
-            console.log("Cancel pressed");  // Debugging line
-            setIsEditModalVisible(false);
-          }} />
+
+          <TouchableOpacity onPress={() => setShowStartPicker(true)}>
+            <Text style={styles.input}>
+              Start Time: {moment(startDate).format('YYYY-MM-DD HH:mm')}
+            </Text>
+          </TouchableOpacity>
+
+          {showStartPicker && (
+            <DateTimePicker
+              value={startDate}
+              mode="datetime"
+              display="default"
+              onChange={onChangeStart}
+            />
+          )}
+
+          <TouchableOpacity onPress={() => setShowEndPicker(true)}>
+            <Text style={styles.input}>
+              End Time: {moment(endDate).format('YYYY-MM-DD HH:mm')}
+            </Text>
+          </TouchableOpacity>
+
+          {showEndPicker && (
+            <DateTimePicker
+              value={endDate}
+              mode="datetime"
+              display="default"
+              onChange={onChangeEnd}
+            />
+          )}
+
+          <Button title="Save Changes" onPress={handleSaveChanges} />
+          <Button title="Cancel" onPress={() => setIsEditModalVisible(false)} />
         </View>
       </View>
     </Modal>
   );
-  
-  
-  
 
   return (
     <View style={styles.container}>
@@ -275,9 +295,12 @@ const [isEditModalVisible, setIsEditModalVisible] = useState(false);
           renderItem={renderRecordItem}
         />
       )}
+
+      {isEditModalVisible && renderEditModal()}
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
@@ -330,7 +353,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'center',

@@ -5,8 +5,9 @@ import { Picker } from '@react-native-picker/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Swipeable } from 'react-native-gesture-handler';
 
-const ProfileScreen = () => {
+const ProfileScreen = ({ navigation }) => {
   const [name, setName] = useState('Baby');
+  const [storedName, setStoredName] = useState();
   const [editableName, setEditableName] = useState(false);
   const [height, setHeight] = useState(50);
   const [weight, setWeight] = useState(3);
@@ -19,6 +20,16 @@ const ProfileScreen = () => {
   useEffect(() => {
     loadRecords();
   }, []);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity onPress={handleHeaderButtonPress} style={styles.editButton}>
+          <Text style={styles.editButtonText}>{editableName ? 'Save' : 'Edit'}</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, editableName]);
 
   const handleSelectImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -45,11 +56,14 @@ const ProfileScreen = () => {
       const updatedRecords = [...records, newRecord];
       setRecords(updatedRecords);
       await AsyncStorage.setItem('records', JSON.stringify(updatedRecords));
+      await AsyncStorage.setItem('name', name);
+      setShowDetails(false); // Hide details after saving
       alert('Profile saved!');
     } catch (error) {
-      console.error('Failed to save record', error);
+      console.error('Failed to save profile', error);
     }
   };
+
 
   const handleDelete = async (id) => {
     try {
@@ -64,13 +78,42 @@ const ProfileScreen = () => {
   const loadRecords = async () => {
     try {
       const storedRecords = await AsyncStorage.getItem('records');
+      const storedName = await AsyncStorage.getItem('name');
+  
       if (storedRecords) {
-        setRecords(JSON.parse(storedRecords));
+        const records = JSON.parse(storedRecords);
+        setRecords(records);
+        
+        // Set the most recent record's height and weight if available
+        if (records.length > 0) {
+          const latestRecord = records[records.length - 1];
+          setHeight(latestRecord.height);
+          setWeight(latestRecord.weight);
+        }
+      }
+  
+      if (storedName) {
+        setName(storedName);
+        setStoredName(storedName);
       }
     } catch (error) {
-      console.error('Failed to load records', error);
+      console.error('Failed to load data', error);
     }
   };
+  
+
+  const handleHeaderButtonPress = async () => {
+    if (editableName) {
+      // Save changes when in edit mode
+      await AsyncStorage.setItem('name', name);
+      setEditableName(false);
+      setShowDetails(false); // Hide details after saving
+    } else {
+      // Switch to edit mode
+      setEditableName(true);
+    }
+  };
+  
 
   const renderRightActions = (id) => (
     <TouchableOpacity
@@ -101,23 +144,26 @@ const ProfileScreen = () => {
       </View>
 
       <View style={styles.nameContainer}>
-        <Text style={styles.label}>Name:</Text>
         {editableName ? (
           <TextInput
             style={styles.input}
             value={name}
             onChangeText={setName}
-            onBlur={() => setEditableName(false)}
-            placeholder="Enter your name"
+            onBlur={async () => {
+              setEditableName(false);
+              await AsyncStorage.setItem('name', name);
+            }}
+            placeholder="Enter your baby's name"
           />
         ) : (
           <View style={styles.nameView}>
-            <Text style={styles.nameText}>{name}</Text>
-            <TouchableOpacity onPress={() => setEditableName(true)}>
-              <Text style={styles.editText}>Edit</Text>
-            </TouchableOpacity>
+            <Text style={styles.nameText}>{storedName}</Text>
           </View>
         )}
+          <View style={styles.labelView}>
+            <Text style={styles.infoLabel}>{weight} kg</Text>
+            <Text style={styles.infoLabel}>{height} cm</Text>
+          </View>
       </View>
 
       {!showDetails && (
@@ -132,7 +178,7 @@ const ProfileScreen = () => {
           <TouchableOpacity onPress={toggleWeightPicker} style={styles.pickerLabel}>
             <Text style={styles.label}>Weight (kg): {weight}</Text>
           </TouchableOpacity>
-          <Button title="Save Profile" onPress={handleSave} />
+          <Button title="Save Input" onPress={handleSave} />
           <FlatList
             data={records}
             keyExtractor={(item) => item.id}
@@ -166,7 +212,11 @@ const ProfileScreen = () => {
                 <Picker.Item key={value} label={`${value}`} value={value} />
               ))}
             </Picker>
-            <Button title="OK" onPress={() => setShowHeightPicker(false)} />
+            <TouchableOpacity
+                style={styles.okButton}
+                onPress={() => setShowHeightPicker(false)}>
+                  <Text style={styles.okButtonText}>OK</Text>
+              </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -184,11 +234,16 @@ const ProfileScreen = () => {
               onValueChange={(itemValue) => setWeight(itemValue)}
               style={styles.picker}
             >
-              {Array.from({ length: 21 }, (_, i) => i + 1).map((value) => (
+              {Array.from({ length: 25 }, (_, i) => i + 1).map((value) => (
                 <Picker.Item key={value} label={`${value}`} value={value} />
               ))}
             </Picker>
-            <Button title="OK" onPress={() => setShowWeightPicker(false)} />
+              <TouchableOpacity
+                style={styles.okButton}
+                onPress={() => setShowWeightPicker(false)}>
+                  <Text style={styles.okButtonText}>OK</Text>
+              </TouchableOpacity>
+
           </View>
         </View>
       </Modal>
@@ -207,9 +262,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   profilePicture: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
     borderWidth: 2,
     borderColor: '#ddd',
     marginBottom: 10,
@@ -218,18 +273,49 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   label: {
-    fontSize: 18,
+    fontSize: 14,
     marginBottom: 5,
     color: '#333',
   },
+  okButton:{
+    marginTop: 25,
+    borderRadius: 10,
+    padding: 1,
+    backgroundColor: '#ddd',
+    borderColor: '#007BFF',
+    borderWidth: 2,
+  },
+  okButtonText:{
+    color: '#007BFF',
+    paddingHorizontal: 40,
+    paddingVertical: 15,
+  },
+  labelView:{
+    flexDirection:'row',
+    justifyContent:'center',
+    gap:40,
+    padding: 20,
+    borderTopWidth: 2,
+    borderColor: '#ddd',
+    borderBottomWidth: 2,
+  },
+  infoLabel: {
+    fontSize: 30,
+    fontFamily: 'Inter',
+    fontWeight: '100',
+    flexDirection:'row'
+  },
   nameView: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
+    justifyContent:'center',
   },
   nameText: {
-    fontSize: 18,
+    fontSize: 62,
+    fontFamily:'Inter',
+    fontWeight:'200',
     color: '#333',
-    marginRight: 10,
+    marginBottom: 25
   },
   editText: {
     color: '#007BFF',
@@ -296,6 +382,13 @@ const styles = StyleSheet.create({
     color: 'white',
     fontFamily: 'Inter',
     fontWeight: '400',
+  },
+  editButton: {
+    marginRight: 10,
+  },
+  editButtonText: {
+    color: '#007BFF',
+    fontSize: 18,
   },
 });
 

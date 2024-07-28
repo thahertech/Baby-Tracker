@@ -57,10 +57,11 @@ export default function AppNavigator() {
             component={RecordsScreen}
             options={{ title: 'Records' }} 
         />
-                            <Stack.Screen name="BabyRecords" 
+                            {/* <Stack.Screen name="BabyRecords" 
             component={BabyRecords}
-            options={{ title: 'Baby Records' }} 
-        />
+            options={{ title: 'History' }} 
+        /> */}
+        
             <Stack.Screen name="Profile" 
             component={ProfileScreen}
             options={{ title: 'Profile' }} 

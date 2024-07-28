@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, Button, ActivityIndicator, Dimensions, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, Button, ActivityIndicator, Dimensions } from 'react-native';
 import * as SQLite from 'expo-sqlite';
+import ChartComponent from '../components/ChartComponent';
+
+
 import { useFocusEffect } from '@react-navigation/native';
 import moment from 'moment';
-import Svg, { Polyline, Text as SvgText, Line } from 'react-native-svg';
-import { LineChart, YAxis, XAxis, Grid } from 'react-native-svg-charts';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -17,21 +18,25 @@ const RecordsScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const [recordType, setRecordType] = useState('feeding');
-  const [viewType, setViewType] = useState('chart'); // Add a state for chart/table view
+  const [viewType, setViewType] = useState('chart');
 
   useEffect(() => {
     const initializeDatabase = async () => {
       const database = SQLite.openDatabaseSync('myDatabase.db');
       setDb(database);
 
-      await database.execAsync(
-        'CREATE TABLE IF NOT EXISTS feeding_records (id INTEGER PRIMARY KEY AUTOINCREMENT, datetime TEXT, amount TEXT, notes TEXT, height INTEGER, weight INTEGER);'
-      );
-      await database.execAsync(
-        'CREATE TABLE IF NOT EXISTS sleep_records (id INTEGER PRIMARY KEY AUTOINCREMENT, start TEXT, end TEXT, height INTEGER, weight INTEGER);'
-      );
+      try {
+        await database.execAsync(
+          'CREATE TABLE IF NOT EXISTS feeding_records (id INTEGER PRIMARY KEY AUTOINCREMENT, datetime TEXT, amount TEXT, notes TEXT);'
+        );
+        await database.execAsync(
+          'CREATE TABLE IF NOT EXISTS sleep_records (id INTEGER PRIMARY KEY AUTOINCREMENT, start TEXT, end TEXT);'
+        );
 
-      fetchRecords();
+        fetchRecords();
+      } catch (error) {
+        console.error('Error initializing database:', error);
+      }
     };
 
     initializeDatabase();
@@ -74,21 +79,17 @@ const RecordsScreen = () => {
     if (db && selectedRecord) {
       try {
         if (isEdit) {
-          await db.execAsync(`UPDATE ${recordType}_records SET datetime = ?, amount = ?, notes = ?, height = ?, weight = ? WHERE id = ?`, [
+          await db.execAsync(`UPDATE ${recordType}_records SET datetime = ?, amount = ?, notes = ? WHERE id = ?`, [
             selectedRecord.datetime,
             selectedRecord.amount,
             selectedRecord.notes,
-            selectedRecord.height,
-            selectedRecord.weight,
             selectedRecord.id,
           ]);
         } else {
-          await db.execAsync(`INSERT INTO ${recordType}_records (datetime, amount, notes, height, weight) VALUES (?, ?, ?, ?, ?)`, [
+          await db.execAsync(`INSERT INTO ${recordType}_records (datetime, amount, notes) VALUES (?, ?, ?)`, [
             selectedRecord.datetime,
             selectedRecord.amount,
             selectedRecord.notes,
-            selectedRecord.height,
-            selectedRecord.weight,
           ]);
         }
         fetchRecords();
@@ -104,84 +105,12 @@ const RecordsScreen = () => {
       try {
         await db.execAsync(`DELETE FROM ${recordType}_records WHERE id = ?`, [selectedRecord.id]);
         fetchRecords();
+        console.log('deleted:' +selectedRecord.id + recordType );
         setModalVisible(false);
       } catch (error) {
         console.error('Error deleting record:', error);
       }
     }
-  };
-
-  const renderFeedingChart = () => {
-    if (feedingRecords.length === 0) return null;
-
-    const dates = feedingRecords.map(record => moment(record.datetime).format('MMM DD'));
-    const amounts = feedingRecords.map(record => {
-      switch (record.amount) {
-        case 'none':
-          return 0;
-        case 'little':
-          return 1;
-        case 'normal':
-          return 2;
-        case 'a lot':
-          return 3;
-        default:
-          return 0;
-      }
-    });
-
-    return (
-      <ScrollView horizontal contentContainerStyle={{ paddingHorizontal: 20 }}>
-        <LineChart
-          style={{ height: 200, width: screenWidth - 40 }}
-          data={amounts}
-          svg={{ stroke: 'rgb(134, 65, 244)' }}
-          contentInset={{ top: 20, bottom: 20 }}
-          animate
-        >
-          <Grid />
-        </LineChart>
-        <XAxis
-          style={{ marginTop: 10, width: screenWidth - 40 }}
-          data={dates}
-          formatLabel={(value, index) => dates[index]}
-          contentInset={{ left: 10, right: 10 }}
-        />
-      </ScrollView>
-    );
-  };
-
-  const renderSleepChart = () => {
-    if (sleepRecords.length === 0) return null;
-
-    const dates = sleepRecords.map(record => moment(record.start).format('MM DD'));
-    const sleepDurations = sleepRecords.map(record => {
-      if (record.end) {
-        const duration = (new Date(record.start) - new Date(record.end)) / 1000 / 60;
-        return duration;
-      }
-      return 0;
-    });
-
-    return (
-      <ScrollView horizontal contentContainerStyle={{ paddingHorizontal: 20 }}>
-        <LineChart
-          style={{ height: 200, width: screenWidth - 40 }}
-          data={sleepDurations}
-          svg={{ stroke: 'rgb(54, 162, 235)' }}
-          contentInset={{ top: 20, bottom: 20 }}
-          animate
-        >
-          <Grid />
-        </LineChart>
-        <XAxis
-          style={{ marginTop: 10, width: screenWidth - 40 }}
-          data={dates}
-          formatLabel={(value, index) => dates[index]}
-          contentInset={{ left: 10, right: 10 }}
-        />
-      </ScrollView>
-    );
   };
 
   const renderFeedingTable = () => (
@@ -190,7 +119,7 @@ const RecordsScreen = () => {
       keyExtractor={(item) => item.id.toString()}
       renderItem={({ item }) => (
         <TouchableOpacity style={styles.tableRow} onPress={() => handleRecordPress(item, 'feeding')}>
-          <Text style={styles.tableCell}>{moment(item.datetime).format('HH')} AM / PM</Text>
+          <Text style={styles.tableCell}>{moment(item.datetime).format('MMM D')}</Text>
           <Text style={styles.tableCell}>{item.amount}</Text>
           <Text style={styles.tableCell}>{item.notes}</Text>
         </TouchableOpacity>
@@ -270,20 +199,7 @@ const RecordsScreen = () => {
               />
             </>
           )}
-          <TextInput
-            style={styles.input}
-            placeholder="Height"
-            keyboardType="numeric"
-            value={selectedRecord?.height?.toString() || ''}
-            onChangeText={(text) => setSelectedRecord({ ...selectedRecord, height: parseInt(text) })}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Weight"
-            keyboardType="numeric"
-            value={selectedRecord?.weight?.toString() || ''}
-            onChangeText={(text) => setSelectedRecord({ ...selectedRecord, weight: parseInt(text) })}
-          />
+
           <Button title={isEdit ? 'Save Changes' : 'Add Record'} onPress={handleSave} />
           {isEdit && <Button title="Delete Record" color="red" onPress={handleDelete} />}
           <TouchableOpacity style={styles.modalCloseButton} onPress={() => setModalVisible(false)}>
@@ -317,11 +233,36 @@ const RecordsScreen = () => {
               <>
                 <View style={styles.table}>
                   <Text style={styles.title}>Feeding Records (Past 7 Days)</Text>
-                  {renderFeedingChart()}
+                  <ChartComponent
+                    data={feedingRecords.map(record => {
+                      switch (record.amount) {
+                        case 'none':
+                          return 0;
+                        case 'little':
+                          return 1;
+                        case 'normal':
+                          return 2;
+                        case 'a lot':
+                          return 3;
+                        default:
+                          return 0;
+                      }
+                    })}
+                    dates={feedingRecords.map(record => moment(record.datetime).format('DD M'))}
+                  />
                 </View>
                 <View style={styles.table}>
                   <Text style={styles.title}>Sleep Records (Past 7 Days)</Text>
-                  {renderSleepChart()}
+                  <ChartComponent
+                    data={sleepRecords.map(record => {
+                      if (record.end) {
+                        const duration = (new Date(record.end) - new Date(record.start)) / 1000 / 60;
+                        return duration;
+                      }
+                      return 0;
+                    })}
+                    dates={sleepRecords.map(record => moment(record.start).format('MM DD'))}
+                  />
                 </View>
               </>
             ) : (
@@ -343,6 +284,7 @@ const RecordsScreen = () => {
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
@@ -382,7 +324,8 @@ const styles = StyleSheet.create({
   },
   tableCell: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
+    fontFamily: 'Inter'
   },
   emptyText: {
     textAlign: 'center',
@@ -397,7 +340,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
-    width: '80%',
+    width: '100%',
     backgroundColor: '#fff',
     padding: 20,
     borderRadius: 10,

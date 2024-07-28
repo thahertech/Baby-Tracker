@@ -32,11 +32,11 @@ export default function HomeScreen({ navigation }) {
         icon="history"
         onPress={() => navigation.navigate('Records')}
         />
-                  <CardComponent
+                  {/* <CardComponent
         title="Baby Records"
         icon="history"
         onPress={() => navigation.navigate('BabyRecords')}
-        />
+        /> */}
 
 <CardComponent
           title="Profile"

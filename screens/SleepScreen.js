@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Button, StyleSheet, FlatList, Alert } from 'react-native';
+import { View, Text, Button, StyleSheet, FlatList, Alert, TouchableOpacity } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import * as SQLite from 'expo-sqlite';
 import * as Notifications from 'expo-notifications';
+import SlidingPanel from '../components/SlidingPanel'; // Adjust the import path as needed
+import moment from 'moment';
 
 const SleepScreen = () => {
   const [isTracking, setIsTracking] = useState(false);
@@ -12,9 +15,11 @@ const SleepScreen = () => {
   const [isEndPickerVisible, setIsEndPickerVisible] = useState(false);
   const [sleepRecords, setSleepRecords] = useState([]);
   const [db, setDb] = useState(null);
-  const [elapsedTime, setElapsedTime] = useState(0); // State to keep track of elapsed time
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [isPanelVisible, setPanelVisible] = useState(false); // New state for panel visibility
 
-  const timerRef = useRef(null); // Ref to hold the timer interval
+  const timerRef = useRef(null);
 
   useEffect(() => {
     const getPermissions = async () => {
@@ -27,10 +32,9 @@ const SleepScreen = () => {
     getPermissions();
 
     const initializeDatabase = async () => {
-      const database = SQLite.openDatabaseSync('myDatabase.db'); // Open synchronously
+      const database = SQLite.openDatabaseSync('myDatabase.db');
       setDb(database);
 
-      // Create table if it doesn't exist
       await database.execAsync(
         'CREATE TABLE IF NOT EXISTS sleep_records (id INTEGER PRIMARY KEY AUTOINCREMENT, start TEXT, end TEXT);'
       );
@@ -69,7 +73,6 @@ const SleepScreen = () => {
     }
   };
 
-
   const handleLogSleep = () => {
     if (sleepStart && sleepEnd && sleepEnd > sleepStart) {
       saveSleepRecord(sleepStart, sleepEnd);
@@ -88,6 +91,21 @@ const SleepScreen = () => {
         console.error('Error fetching sleep records:', error);
         Alert.alert('Error', 'Failed to fetch sleep records.');
       }
+    }
+  };
+
+  const deleteSleepRecord = async (id) => {
+    if (db) {
+      setLoading(true);
+      try {
+        await db.runAsync('DELETE FROM sleep_records WHERE id = ?', [id]);
+        fetchSleepRecords();
+      } catch (error) {
+        console.error('Error deleting sleep record:', error);
+      } finally {
+        setLoading(false);
+      }
+      console.log('deleted record: ' + id);
     }
   };
 
@@ -134,7 +152,7 @@ const SleepScreen = () => {
 
   const calculateSleepDuration = (start, end) => {
     if (start && end) {
-      const duration = (new Date(end) - new Date(start)) / 1000 / 60; // Duration in minutes
+      const duration = (new Date(end) - new Date(start)) / 1000 / 60;
       return `${Math.floor(duration)} minutes`;
     }
     return 'N/A';
@@ -144,7 +162,7 @@ const SleepScreen = () => {
     console.log('Scheduling notification...');
     await cancelNotification();
 
-    const triggerInterval = 600; // Trigger every 10 minutes (600 seconds)
+    const triggerInterval = 600;
 
     await Notifications.scheduleNotificationAsync({
       content: {
@@ -171,9 +189,22 @@ const SleepScreen = () => {
     return `${minutes}m ${remainingSeconds}s`;
   };
 
+  const renderRightActions = (id) => (
+    <TouchableOpacity
+      style={styles.deleteButton}
+      onPress={() => deleteSleepRecord(id)}
+    >
+      <Text style={styles.deleteButtonText}>Delete</Text>
+    </TouchableOpacity>
+  );
+
+  const togglePanelVisibility = () => {
+    setPanelVisible(!isPanelVisible);
+    fetchSleepRecords();
+  };
+
   return (
     <View style={styles.container}>
-    
       {isTracking ? (
         <View style={styles.trackingContainer}>
           <Text style={styles.trackingText}>Tracking Sleep...</Text>
@@ -201,21 +232,25 @@ const SleepScreen = () => {
       <View style={styles.logButtonContainer}>
         <Button style={styles.LogButton} title="Log Sleep" onPress={handleLogSleep} />
       </View>
-      <View style={styles.recordsContainer}>
-        <Text>Sleep Records:</Text>
+      <Button title="Show History" onPress={togglePanelVisibility} />
+      <SlidingPanel isVisible={isPanelVisible} toggleVisibility={togglePanelVisibility}>
+        <View style={styles.panelContent}>
         <FlatList
           data={sleepRecords}
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => (
-            <View style={styles.recordItem}>
-              <Text>Start: {new Date(item.start).toLocaleString()}</Text>
-              <Text>End: {item.end ? new Date(item.end).toLocaleString() : 'Still sleeping'}</Text>
-              <Text>Duration: {item.end ? calculateSleepDuration(new Date(item.start), new Date(item.end)) : 'N/A'}</Text>
-            </View>
+            <Swipeable renderRightActions={() => renderRightActions(item.id)}>
+              <View style={styles.recordItem}>
+                <Text>Start: {moment(item.start).format('MMM D hh:mm')}</Text>
+                <Text>End: {item.end ? moment(item.end).format('MMM D hh:m') : 'Still sleeping'}</Text>
+                <Text>Duration: {item.end ? calculateSleepDuration(new Date(item.start), new Date(item.end)) : 'N/A'}</Text>
+              </View>
+            </Swipeable>
           )}
         />
-      </View>
 
+        </View>
+      </SlidingPanel>
       <DateTimePickerModal
         isVisible={isStartPickerVisible}
         mode="datetime"
@@ -249,7 +284,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     alignItems: 'center',
     backgroundColor: '#fff9',
-    padding: 15,
+    padding: 10,
     borderRadius: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -289,9 +324,21 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 5,
   },
+  deleteButton: {
+    backgroundColor: '#FF6347',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 100,
+    height: '80%',
+    borderRadius: 10,
+  },
+  deleteButtonText: {
+    color: '#fff',
+    fontSize: 16,
+  },
   logButtonContainer: {
-    backgroundColor:'#009',
-    borderRadius:'10px',
+    backgroundColor: '#009',
+    borderRadius: 10,
     padding: 8,
     marginBottom: 20,
   },
@@ -312,6 +359,9 @@ const styles = StyleSheet.create({
     padding: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
+  },
+  panelContent: {
+    padding: 20,
   },
 });
 
