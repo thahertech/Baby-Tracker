@@ -1,15 +1,14 @@
-// components/SleepTracking.js
 import React, { useState } from 'react';
 import {
   View,
   Text,
-  Button,
   StyleSheet,
-  Alert,
   TouchableOpacity
 } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 const SleepTracking = () => {
   const [isStartPickerVisible, setStartPickerVisible] = useState(false);
@@ -17,6 +16,17 @@ const SleepTracking = () => {
   const [sleepStart, setSleepStart] = useState(null);
   const [sleepEnd, setSleepEnd] = useState(null);
   const [sleeping, setSleeping] = useState(false);
+  const [storedName, setStoredName] = useState('Your baby');
+
+  useEffect(() => {
+    const loadName = async () => {
+      const name = await AsyncStorage.getItem('name');
+      if (name) {
+        setStoredName(name);
+      }
+    };
+    loadName();
+  }, []);
 
   const showStartPicker = () => setStartPickerVisible(true);
   const hideStartPicker = () => setStartPickerVisible(false);
@@ -42,7 +52,7 @@ const SleepTracking = () => {
     Notifications.scheduleNotificationAsync({
       content: {
         title: "Sleep Tracking Alert",
-        body: "Is your baby still asleep?",
+        body: `Is ${storedName} still asleep?`,
       },
       trigger: {
         seconds: 3600, // 1 hour
