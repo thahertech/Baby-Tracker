@@ -57,13 +57,12 @@ const ProfileScreen = ({ navigation }) => {
       setRecords(updatedRecords);
       await AsyncStorage.setItem('records', JSON.stringify(updatedRecords));
       await AsyncStorage.setItem('name', name);
-      setShowDetails(false); // Hide details after saving
+      setShowDetails(false);
       alert('Profile saved!');
     } catch (error) {
       console.error('Failed to save profile', error);
     }
   };
-
 
   const handleDelete = async (id) => {
     try {
@@ -83,8 +82,6 @@ const ProfileScreen = ({ navigation }) => {
       if (storedRecords) {
         const records = JSON.parse(storedRecords);
         setRecords(records);
-        
-        // Set the most recent record's height and weight if available
         if (records.length > 0) {
           const latestRecord = records[records.length - 1];
           setHeight(latestRecord.height);
@@ -100,37 +97,25 @@ const ProfileScreen = ({ navigation }) => {
       console.error('Failed to load data', error);
     }
   };
-  
 
   const handleHeaderButtonPress = async () => {
     if (editableName) {
-      // Save changes when in edit mode
       await AsyncStorage.setItem('name', name);
       setEditableName(false);
-      setShowDetails(false); // Hide details after saving
+      setShowDetails(false);
     } else {
-      // Switch to edit mode
       setEditableName(true);
     }
   };
-  
 
   const renderRightActions = (id) => (
-    <TouchableOpacity
-      style={styles.deleteButton}
-      onPress={() => handleDelete(id)}
-    >
+    <TouchableOpacity style={styles.deleteButton} onPress={() => handleDelete(id)}>
       <Text style={styles.deleteButtonText}>Delete</Text>
     </TouchableOpacity>
   );
 
-  const toggleHeightPicker = () => {
-    setShowHeightPicker(!showHeightPicker);
-  };
-
-  const toggleWeightPicker = () => {
-    setShowWeightPicker(!showWeightPicker);
-  };
+  const toggleHeightPicker = () => setShowHeightPicker(!showHeightPicker);
+  const toggleWeightPicker = () => setShowWeightPicker(!showWeightPicker);
 
   return (
     <View style={styles.container}>
@@ -160,17 +145,15 @@ const ProfileScreen = ({ navigation }) => {
             <Text style={styles.nameText}>{storedName}</Text>
           </View>
         )}
-          <View style={styles.labelView}>
-            <Text style={styles.infoLabel}>{weight} kg</Text>
-            <Text style={styles.infoLabel}>{height} cm</Text>
-          </View>
+        <View style={styles.labelView}>
+          <Text style={styles.infoLabel}>{weight} kg</Text>
+          <Text style={styles.infoLabel}>{height} cm</Text>
+        </View>
       </View>
 
-      {!showDetails && (
+      {!showDetails ? (
         <Button title="Show Details" onPress={() => setShowDetails(true)} />
-      )}
-
-      {showDetails && (
+      ) : (
         <>
           <TouchableOpacity onPress={toggleHeightPicker} style={styles.pickerLabel}>
             <Text style={styles.label}>Height (cm): {height}</Text>
@@ -212,11 +195,9 @@ const ProfileScreen = ({ navigation }) => {
                 <Picker.Item key={value} label={`${value}`} value={value} />
               ))}
             </Picker>
-            <TouchableOpacity
-                style={styles.okButton}
-                onPress={() => setShowHeightPicker(false)}>
-                  <Text style={styles.okButtonText}>OK</Text>
-              </TouchableOpacity>
+            <TouchableOpacity style={styles.okButton} onPress={() => setShowHeightPicker(false)}>
+              <Text style={styles.okButtonText}>OK</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -238,12 +219,9 @@ const ProfileScreen = ({ navigation }) => {
                 <Picker.Item key={value} label={`${value}`} value={value} />
               ))}
             </Picker>
-              <TouchableOpacity
-                style={styles.okButton}
-                onPress={() => setShowWeightPicker(false)}>
-                  <Text style={styles.okButtonText}>OK</Text>
-              </TouchableOpacity>
-
+            <TouchableOpacity style={styles.okButton} onPress={() => setShowWeightPicker(false)}>
+              <Text style={styles.okButtonText}>OK</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -277,7 +255,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     color: '#333',
   },
-  okButton:{
+  okButton: {
     marginTop: 25,
     borderRadius: 10,
     padding: 1,
@@ -285,110 +263,78 @@ const styles = StyleSheet.create({
     borderColor: '#007BFF',
     borderWidth: 2,
   },
-  okButtonText:{
-    color: '#007BFF',
-    paddingHorizontal: 40,
-    paddingVertical: 15,
-  },
-  labelView:{
-    flexDirection:'row',
-    justifyContent:'center',
-    gap:40,
-    padding: 20,
-    borderTopWidth: 2,
-    borderColor: '#ddd',
-    borderBottomWidth: 2,
-  },
-  infoLabel: {
-    fontSize: 30,
-    fontFamily: 'Inter',
-    fontWeight: '100',
-    flexDirection:'row'
-  },
-  nameView: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent:'center',
-  },
-  nameText: {
-    fontSize: 62,
-    fontFamily:'Inter',
-    fontWeight:'200',
-    color: '#333',
-    marginBottom: 25
-  },
-  editText: {
+  okButtonText: {
     color: '#007BFF',
     fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    padding: 10,
   },
-  input: {
-    height: 40,
-    borderColor: '#ddd',
-    borderWidth: 1,
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    marginBottom: 20,
+  nameView: {
+    alignItems: 'center',
+  },
+  nameText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  labelView: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 10,
+  },
+  infoLabel: {
+    fontSize: 18,
+    color: '#333',
   },
   pickerLabel: {
-    marginTop: 20,
-    marginBottom: 20,
-    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
     padding: 10,
     borderRadius: 5,
+    marginBottom: 10,
+  },
+  pickerContainer: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+  },
+  picker: {
+    width: 300,
+    height: 200,
   },
   modalContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  pickerContainer: {
-    width: '80%',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 20,
-    alignItems: 'center',
-  },
-  picker: {
-    height: 150,
-    width: '100%',
-    marginBottom: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   recordItem: {
     padding: 15,
-    marginVertical: 8,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 5,
-    backgroundColor: 'grey',
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  text: {
+    fontSize: 16,
+    color: '#333',
   },
   deleteButton: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'red',
+    backgroundColor: '#FF3B30',
+    width: 100,
     height: '100%',
-    width: 80,
-    borderRadius: 10,
   },
   deleteButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  text: {
-    color: 'white',
-    fontFamily: 'Inter',
-    fontWeight: '400',
+    color: '#fff',
+    fontWeight: '600',
   },
   editButton: {
-    marginRight: 10,
+    marginRight: 15,
   },
   editButtonText: {
     color: '#007BFF',
-    fontSize: 18,
+    fontSize: 16,
   },
 });
 

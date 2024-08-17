@@ -73,20 +73,36 @@ const SleepScreen = () => {
     }
   };
 
-  const handleLogSleep = () => {
-    if (sleepStart && sleepEnd && sleepEnd > sleepStart) {
-      saveSleepRecord(sleepStart, sleepEnd);
-      Alert.alert('Success', 'Sleep record logged successfully.');
-    } else {
-      Alert.alert('Error', 'Please set valid start and end times.');
-    }
-  };
+const handleLogSleep = () => {
+  if (sleepStart && sleepEnd && sleepEnd > sleepStart) {
+    // Format start and end times
+    const formattedStart = moment(sleepStart).format('MMM D, YYYY hh:mm A');
+    const formattedEnd = moment(sleepEnd).format('MMM D, YYYY hh:mm A');
+    
+    // Calculate duration
+    const duration = calculateSleepDuration(sleepStart, sleepEnd);
+
+    // Save the record
+    saveSleepRecord(sleepStart, sleepEnd);
+
+    // Show alert
+    Alert.alert(
+      'Sleep Record Logged',
+      `Start Time: ${formattedStart}\nEnd Time: ${formattedEnd}\nTotal Time: ${duration}`,
+      [{ text: 'OK' }]
+    );
+  } else {
+    Alert.alert('Error', 'Please set valid start and end times.');
+  }
+};
+
 
   const fetchSleepRecords = async () => {
     if (db) {
       try {
         const result = await db.getAllAsync('SELECT * FROM sleep_records ORDER BY id DESC');
         setSleepRecords(result);
+        console.log(result);
       } catch (error) {
         console.error('Error fetching sleep records:', error);
         Alert.alert('Error', 'Failed to fetch sleep records.');
@@ -117,12 +133,13 @@ const SleepScreen = () => {
           [start.toISOString(), end ? end.toISOString() : null]
         );
         fetchSleepRecords();
+        console.log('Sleep record saved:', { start, end });
       } catch (error) {
         console.error('Error saving sleep record:', error);
-        Alert.alert('Error', 'Failed to save sleep record.');
       }
     }
   };
+  
 
   const handleStartTracking = () => {
     setSleepStart(new Date());
@@ -135,6 +152,19 @@ const SleepScreen = () => {
       setSleepEnd(end);
       setIsTracking(false);
       saveSleepRecord(sleepStart, end);
+          // Format start and end times
+    const formattedStart = moment(sleepStart).format('MMM D, YYYY hh:mm A');
+    const formattedEnd = moment(end).format('MMM D, YYYY hh:mm A');
+    
+    // Calculate duration
+    const duration = calculateSleepDuration(sleepStart, end);
+
+          // Show alert
+    Alert.alert(
+      'Sleep Record Logged',
+      `Start Time: ${formattedStart}\nEnd Time: ${formattedEnd}\nTotal Time: ${duration}`,
+      [{ text: 'OK' }]
+    );
     } else {
       Alert.alert('Error', 'End time must be after start time');
     }
@@ -160,6 +190,7 @@ const SleepScreen = () => {
 
   const scheduleNotification = async () => {
     console.log('Scheduling notification...');
+    
     await cancelNotification();
 
     const triggerInterval = 600;
@@ -171,7 +202,7 @@ const SleepScreen = () => {
       },
       trigger: {
         seconds: triggerInterval,
-        repeats: true,
+        repeats: false,
       },
     });
     console.log('Notification scheduled.');
@@ -242,7 +273,7 @@ const SleepScreen = () => {
             <Swipeable renderRightActions={() => renderRightActions(item.id)}>
               <View style={styles.recordItem}>
                 <Text>Start: {moment(item.start).format('MMM D hh:mm')}</Text>
-                <Text>End: {item.end ? moment(item.end).format('MMM D hh:m') : 'Still sleeping'}</Text>
+                <Text>End: {item.end ? moment(item.end).format('MMM D hh:mm') : 'Still sleeping'}</Text>
                 <Text>Duration: {item.end ? calculateSleepDuration(new Date(item.start), new Date(item.end)) : 'N/A'}</Text>
               </View>
             </Swipeable>
@@ -272,6 +303,9 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: '#eaeaea',
+    alignContent:'center',
+    alignItems:'center',
+
   },
   title: {
     fontSize: 28,
@@ -281,6 +315,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   trackingContainer: {
+    marginTop:50,
     marginBottom: 20,
     alignItems: 'center',
     backgroundColor: '#fff9',

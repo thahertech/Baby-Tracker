@@ -13,7 +13,7 @@ const CardComponent = ({ title, icon, onPress }) => (
 
 const styles = StyleSheet.create({
   card: {
-    marginVertical: 8,
+    marginVertical: 5,
     elevation: 4,
   },
 });

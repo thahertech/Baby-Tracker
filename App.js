@@ -8,8 +8,8 @@ import './BackGroundFetch'; // Import the task manager file
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true, // Show the notification alert
-    shouldPlaySound: false, // Don't play a sound with the notification
-    shouldSetBadge: false, // Don't set a badge count
+    shouldPlaySound: true, // Don't play a sound with the notification
+    shouldSetBadge: true, // Don't set a badge count
   }),
 });
 

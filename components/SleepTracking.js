@@ -1,116 +1,40 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity
-} from 'react-native';
-import DateTimePickerModal from 'react-native-modal-datetime-picker';
-import * as Notifications from 'expo-notifications';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, Button } from 'react-native';
+import { SQLite } from 'expo-sqlite';
 
+const db = SQLite.openDatabase('myDatabase.db');
 
 const SleepTracking = () => {
-  const [isStartPickerVisible, setStartPickerVisible] = useState(false);
-  const [isEndPickerVisible, setEndPickerVisible] = useState(false);
-  const [sleepStart, setSleepStart] = useState(null);
-  const [sleepEnd, setSleepEnd] = useState(null);
-  const [sleeping, setSleeping] = useState(false);
-  const [storedName, setStoredName] = useState('Your baby');
+  const [records, setRecords] = useState([]);
 
   useEffect(() => {
-    const loadName = async () => {
-      const name = await AsyncStorage.getItem('name');
-      if (name) {
-        setStoredName(name);
-      }
-    };
-    loadName();
+    fetchRecords();
   }, []);
 
-  const showStartPicker = () => setStartPickerVisible(true);
-  const hideStartPicker = () => setStartPickerVisible(false);
-
-  const showEndPicker = () => setEndPickerVisible(true);
-  const hideEndPicker = () => setEndPickerVisible(false);
-
-  const handleStartConfirm = (date) => {
-    setSleepStart(date);
-    hideStartPicker();
-    setSleeping(true);
-    scheduleNotification();
-  };
-
-  const handleEndConfirm = (date) => {
-    setSleepEnd(date);
-    hideEndPicker();
-    setSleeping(false);
-    cancelNotification();
-  };
-
-  const scheduleNotification = () => {
-    Notifications.scheduleNotificationAsync({
-      content: {
-        title: "Sleep Tracking Alert",
-        body: `Is ${storedName} still asleep?`,
-      },
-      trigger: {
-        seconds: 3600, // 1 hour
-      },
+  const fetchRecords = () => {
+    db.transaction(tx => {
+      tx.executeSql(
+        'SELECT * FROM sleep ORDER BY start DESC',
+        [],
+        (_, { rows: { _array } }) => setRecords(_array),
+        (tx, error) => console.error('Error fetching records', error)
+      );
     });
   };
 
-  const cancelNotification = async () => {
-    const allScheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
-    allScheduledNotifications.forEach(notification => {
-      Notifications.cancelScheduledNotificationAsync(notification.identifier);
-    });
-  };
-
-  const calculateSleepDuration = () => {
-    if (sleepStart && sleepEnd) {
-      const duration = sleepEnd - sleepStart;
-      const hours = Math.floor(duration / (1000 * 60 * 60));
-      const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
-      return `${hours} hours ${minutes} minutes`;
-    }
-    return 'N/A';
-  };
+  const renderRecord = ({ item }) => (
+    <View style={styles.recordItem}>
+      <Text style={styles.text}>Start: {new Date(item.start).toLocaleString()}</Text>
+      <Text style={styles.text}>End: {new Date(item.end).toLocaleString()}</Text>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Sleep Tracking</Text>
-      {sleeping ? (
-        <View>
-          <Text style={styles.status}>Tracking Sleep...</Text>
-          <TouchableOpacity onPress={showEndPicker} style={styles.button}>
-            <Text style={styles.buttonText}>Stop Tracking</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <View>
-          <TouchableOpacity onPress={showStartPicker} style={styles.button}>
-            <Text style={styles.buttonText}>Start Tracking</Text>
-          </TouchableOpacity>
-          {sleepStart && (
-            <View style={styles.sleepInfo}>
-              <Text>Sleep Started: {sleepStart.toLocaleTimeString()}</Text>
-              <Text>Sleep Duration: {calculateSleepDuration()}</Text>
-            </View>
-          )}
-        </View>
-      )}
-      <DateTimePickerModal
-        isVisible={isStartPickerVisible}
-        mode="time"
-        onConfirm={handleStartConfirm}
-        onCancel={hideStartPicker}
-      />
-      <DateTimePickerModal
-        isVisible={isEndPickerVisible}
-        mode="time"
-        onConfirm={handleEndConfirm}
-        onCancel={hideEndPicker}
+      <FlatList
+        data={records}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={renderRecord}
       />
     </View>
   );
@@ -119,30 +43,20 @@ const SleepTracking = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#f9f9f9',
   },
-  header: {
-    fontSize: 24,
-    marginBottom: 20,
-  },
-  button: {
-    backgroundColor: '#007BFF',
+  recordItem: {
     padding: 15,
+    marginVertical: 8,
+    backgroundColor: '#fff',
     borderRadius: 5,
-    marginVertical: 10,
+    borderWidth: 1,
+    borderColor: '#eee',
   },
-  buttonText: {
-    color: '#FFFFFF',
+  text: {
     fontSize: 16,
-  },
-  status: {
-    fontSize: 18,
-    color: '#FF5722',
-    marginBottom: 10,
-  },
-  sleepInfo: {
-    marginTop: 20,
+    color: '#333',
   },
 });
 

@@ -1,49 +1,41 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ImageBackground } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CardComponent from '../components/CardComponent';
 
 export default function HomeScreen({ navigation }) {
   return (
-    
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-      
-        <CardComponent
-          title="Track Feeding"
-          icon="food-apple"
-          onPress={() => navigation.navigate('Feeding')}
-        />
-
-        <CardComponent
-          title="Track Sleep"
-          icon="bed"
-          onPress={() => navigation.navigate('Sleep')}
-        />
-
-        <CardComponent
-        title="Sleep Records"
-        icon="history"
-        onPress={() => navigation.navigate('SleepRecords')}
-        />
+      <ImageBackground
+        source={require('../assets/BG.jpg')}
+        style={styles.backgroundImage}
+      >
+        <View style={styles.content}>
+          <CardComponent
+            title="Track Feeding"
+            icon="food-apple"
+            onPress={() => navigation.navigate('Feeding')}
+          />
 
           <CardComponent
-        title="Records"
-        icon="history"
-        onPress={() => navigation.navigate('Records')}
-        />
-                  {/* <CardComponent
-        title="Baby Records"
-        icon="history"
-        onPress={() => navigation.navigate('BabyRecords')}
-        /> */}
+            title="Track Sleep"
+            icon="bed"
+            onPress={() => navigation.navigate('Sleep')}
+          />
 
-<CardComponent
-          title="Profile"
-          icon="human"
-          onPress={() => navigation.navigate('Profile')}
-        />
-      </View>
+          <CardComponent
+            title="Records"
+            icon="history"
+            onPress={() => navigation.navigate('Records')}
+          />
+
+          <CardComponent
+            title="Profile"
+            icon="human"
+            onPress={() => navigation.navigate('Profile')}
+          />
+        </View>
+      </ImageBackground>
     </SafeAreaView>
   );
 }
@@ -51,10 +43,18 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+  },
+  backgroundImage: {
+    flex: 1,
+    resizeMode: 'stretch',
+    height: 900,
+    
   },
   content: {
     flex: 1,
     padding: 16,
+    width:300,
+    alignSelf:'center',
+    marginTop: '10%',
   },
 });

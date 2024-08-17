@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, Button, ActivityIndicator, Dimensions } from 'react-native';
+import { Alert, View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, Button, ActivityIndicator, Dimensions } from 'react-native';
 import * as SQLite from 'expo-sqlite';
 import ChartComponent from '../components/ChartComponent';
-
-
 import { useFocusEffect } from '@react-navigation/native';
 import moment from 'moment';
 
@@ -16,7 +14,6 @@ const RecordsScreen = () => {
   const [db, setDb] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [isEdit, setIsEdit] = useState(false);
   const [recordType, setRecordType] = useState('feeding');
   const [viewType, setViewType] = useState('chart');
 
@@ -71,47 +68,59 @@ const RecordsScreen = () => {
   const handleRecordPress = (record, type) => {
     setSelectedRecord(record);
     setRecordType(type);
-    setIsEdit(true);
     setModalVisible(true);
   };
 
-  const handleSave = async () => {
-    if (db && selectedRecord) {
+  const debugDatabase = async () => {
+    if (db) {
       try {
-        if (isEdit) {
-          await db.execAsync(`UPDATE ${recordType}_records SET datetime = ?, amount = ?, notes = ? WHERE id = ?`, [
-            selectedRecord.datetime,
-            selectedRecord.amount,
-            selectedRecord.notes,
-            selectedRecord.id,
-          ]);
-        } else {
-          await db.execAsync(`INSERT INTO ${recordType}_records (datetime, amount, notes) VALUES (?, ?, ?)`, [
-            selectedRecord.datetime,
-            selectedRecord.amount,
-            selectedRecord.notes,
-          ]);
-        }
-        fetchRecords();
-        setModalVisible(false);
+        const feedingResult = await db.getAllAsync('SELECT * FROM feeding_records ORDER BY datetime DESC');
+        const sleepResult = await db.getAllAsync('SELECT * FROM sleep_records ORDER BY start DESC');
+        console.log('Feeding Records:', feedingResult);
+        console.log('Sleep Records:', sleepResult);
       } catch (error) {
-        console.error('Error saving record:', error);
+        console.error('Error querying database:', error);
       }
     }
   };
+  
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (db && selectedRecord) {
-      try {
-        await db.execAsync(`DELETE FROM ${recordType}_records WHERE id = ?`, [selectedRecord.id]);
-        fetchRecords();
-        console.log('deleted:' +selectedRecord.id + recordType );
-        setModalVisible(false);
-      } catch (error) {
-        console.error('Error deleting record:', error);
-      }
+      Alert.alert(
+        'Confirm Deletion',
+        `Are you sure you want to delete this ${recordType} record?`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Delete',
+            onPress: async () => {
+              try {
+                await db.runAsync(`DELETE FROM ${recordType}_records WHERE id = ?`, [selectedRecord.id]);
+  
+                await fetchRecords();
+                
+                await debugDatabase();
+  
+                Alert.alert('Record Deleted', `Deleted ${recordType} record with ID ${selectedRecord.id}`);
+              } catch (error) {
+                console.error('Error deleting record:', error);
+                Alert.alert('Error', 'Failed to delete record');
+              } finally {
+                setModalVisible(false);
+              }
+            },
+          },
+        ]
+      );
     }
+    setModalVisible(false);
   };
+  
+  
 
   const renderFeedingTable = () => (
     <FlatList
@@ -134,8 +143,8 @@ const RecordsScreen = () => {
       keyExtractor={(item) => item.id.toString()}
       renderItem={({ item }) => (
         <TouchableOpacity style={styles.tableRow} onPress={() => handleRecordPress(item, 'sleep')}>
-          <Text style={styles.tableCell}>{moment(item.start).format('MMM D')}</Text>
-          <Text style={styles.tableCell}>{item.end ? moment(item.end).format('MMM D') : 'Still sleeping'}</Text>
+          <Text style={styles.tableCell}>{moment(item.start).format('MMM D HH:MM')}</Text>
+          <Text style={styles.tableCell}>{item.end ? moment(item.end).format('MMM D HH:MM') : 'Still sleeping'}</Text>
           <Text style={styles.tableCell}>{item.end ? calculateSleepDuration(new Date(item.start), new Date(item.end)) : 'N/A'}</Text>
         </TouchableOpacity>
       )}
@@ -145,7 +154,7 @@ const RecordsScreen = () => {
 
   const calculateSleepDuration = (start, end) => {
     if (start && end) {
-      const duration = (new Date(end) - new Date(start)) / 1000 / 60;
+      const duration = (end - start) / 1000 / 60;
       return `${Math.floor(duration)} minutes`;
     }
     return 'N/A';
@@ -160,26 +169,27 @@ const RecordsScreen = () => {
     >
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>{isEdit ? 'Edit Record' : 'Add Record'}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Datetime"
-            value={selectedRecord?.datetime || ''}
-            onChangeText={(text) => setSelectedRecord({ ...selectedRecord, datetime: text })}
-          />
+          <Text style={styles.modalTitle}>{recordType === 'feeding' ? 'Feeding Record' : 'Sleep Record'}</Text>
+
           {recordType === 'feeding' && (
             <>
               <TextInput
                 style={styles.input}
+                placeholder="Datetime"
+                value={selectedRecord?.datetime || ''}
+                editable={false}
+              />
+              <TextInput
+                style={styles.input}
                 placeholder="Amount"
                 value={selectedRecord?.amount || ''}
-                onChangeText={(text) => setSelectedRecord({ ...selectedRecord, amount: text })}
+                editable={false}
               />
               <TextInput
                 style={styles.input}
                 placeholder="Notes"
                 value={selectedRecord?.notes || ''}
-                onChangeText={(text) => setSelectedRecord({ ...selectedRecord, notes: text })}
+                editable={false}
               />
             </>
           )}
@@ -189,19 +199,18 @@ const RecordsScreen = () => {
                 style={styles.input}
                 placeholder="Start"
                 value={selectedRecord?.start || ''}
-                onChangeText={(text) => setSelectedRecord({ ...selectedRecord, start: text })}
+                editable={false}
               />
               <TextInput
                 style={styles.input}
                 placeholder="End"
                 value={selectedRecord?.end || ''}
-                onChangeText={(text) => setSelectedRecord({ ...selectedRecord, end: text })}
+                editable={false}
               />
             </>
           )}
 
-          <Button title={isEdit ? 'Save Changes' : 'Add Record'} onPress={handleSave} />
-          {isEdit && <Button title="Delete Record" color="red" onPress={handleDelete} />}
+          <Button title="Delete Record" color="red" onPress={handleDelete} />
           <TouchableOpacity style={styles.modalCloseButton} onPress={() => setModalVisible(false)}>
             <Text style={styles.modalCloseText}>Close</Text>
           </TouchableOpacity>
@@ -284,7 +293,6 @@ const RecordsScreen = () => {
     </View>
   );
 };
-
 
 const styles = StyleSheet.create({
   container: {

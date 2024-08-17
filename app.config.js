@@ -9,24 +9,26 @@ export default {
     icon: './assets/Logo.jpg',
     splash: {
       image: './assets/Logo.jpg',
-      resizeMode: 'contain',
+      resizeMode: 'cover',
       backgroundColor: '#ffffff',
     },
     updates: {
       fallbackToCacheTimeout: 0,
-      url: 'https://u.expo.dev/a8853df3-b419-4c52-834e-c940cd689233', // Added updates URL
+      url: 'https://u.expo.dev/a8853df3-b419-4c52-834e-c940cd689233',
     },
-    runtimeVersion: '1.0.0', // Added runtimeVersion
+    runtimeVersion: '1.0.0',
     ios: {
       supportsTablet: false,
       infoPlist: {
         UIBackgroundModes: ['fetch'],
+        MinimumOSVersion: "8.0",
+        deploymentTarget: "15.0",
       },
       bundleIdentifier: 'com.sensetech.amiratracker',
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: './assets/adaptive-icon.png',
+        foregroundImage: './assets/Logo.jpg',
         backgroundColor: '#ffffff',
       },
       package: 'com.sensetech.amiratracker',

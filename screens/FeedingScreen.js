@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, Button, StyleSheet, TextInput, FlatList, Modal, TouchableOpacity, ActivityIndicator, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Alert, View, Text, Button, StyleSheet, TextInput, FlatList, Modal, TouchableOpacity, ActivityIndicator, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import * as SQLite from 'expo-sqlite';
-import * as Notifications from 'expo-notifications';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Swipeable } from 'react-native-gesture-handler';
 
@@ -16,15 +15,6 @@ const FeedingScreen = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const getPermissions = async () => {
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== 'granted') {
-        console.log('Notification permissions not granted!');
-      }
-    };
-
-    getPermissions();
-
     const initializeDatabase = async () => {
       setLoading(true);
       try {
@@ -44,18 +34,7 @@ const FeedingScreen = () => {
     };
 
     initializeDatabase();
-    return () => {
-      cancelNotification();
-    };
   }, []);
-
-  useEffect(() => {
-    if (currentDateTime) {
-      scheduleNotification();
-    } else {
-      cancelNotification();
-    }
-  }, [currentDateTime]);
 
   const fetchFeedingRecords = async () => {
     if (db) {
@@ -64,7 +43,6 @@ const FeedingScreen = () => {
         const result = await db.getAllAsync('SELECT * FROM feeding_records ORDER BY id DESC');
         setFeedingRecords(result);
         console.log('Fetch Feeding Records...');
-
       } catch (error) {
         console.error('Error fetching feeding records:', error);
       } finally {
@@ -80,10 +58,7 @@ const FeedingScreen = () => {
         await db.runAsync(
           'INSERT INTO feeding_records (datetime, amount, notes) VALUES (?, ?, ?)',
           [datetime.toISOString(), amount, notes]
-
         );
-        console.log(datetime.toISOString(), amount + notes);
-
         fetchFeedingRecords();
       } catch (error) {
         console.error('Error saving feeding record:', error);
@@ -103,40 +78,25 @@ const FeedingScreen = () => {
         console.error('Error deleting feeding record:', error);
       } finally {
         setLoading(false);
-
       }
-    console.log('deleted record: ' + id);
-  }
+      console.log('deleted record: ' + id);
+    }
   };
 
   const handleLogFeeding = () => {
     if (currentDateTime) {
+      const formattedDateTime = currentDateTime.toLocaleString();
+      
+      const message = `Feeding logged at: ${formattedDateTime}\nAmount: ${foodAmount}\nNotes: ${notes}`;
+  
       saveFeedingRecord(currentDateTime, foodAmount, notes);
+      
       setFoodAmount('normal');
       setNotes('');
       setCurrentDateTime(new Date());
+  
+      Alert.alert('Feeding Record Logged', message, [{ text: 'OK' }]);
     }
-  };
-
-  const scheduleNotification = async () => {
-    await cancelNotification();
-
-    const triggerInterval = 60;
-
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'Feeding Tracker',
-        body: `Feeding logged at ${currentDateTime ? currentDateTime.toLocaleString() : 'unknown time'}`,
-      },
-      trigger: {
-        seconds: triggerInterval,
-        repeats: true,
-      },
-    });
-  };
-
-  const cancelNotification = async () => {
-    await Notifications.cancelAllScheduledNotificationsAsync();
   };
 
   const handleDateTimeConfirm = (date) => {
@@ -181,12 +141,11 @@ const FeedingScreen = () => {
   );
 
   return (
-    
     <TouchableWithoutFeedback onPress={handleKeyboardDismiss}>
       <View style={styles.container}>
         <FlatList
           ListHeaderComponent={
-            <>
+            <View style={styles.listHeader}>
               <View style={styles.section}>
                 <View style={styles.labelContainer}>
                   <Text style={styles.label}>Date</Text>
@@ -213,20 +172,21 @@ const FeedingScreen = () => {
                   onChangeText={setNotes}
                   placeholder="Enter any additional notes..."
                 />
+                <TouchableOpacity
+                  style={styles.okButton}
+                  onPress={handleLogFeeding}
+                >
+                  <Text style={styles.okButtonText}>Okay</Text>
+                </TouchableOpacity>
               </View>
-
-            </>
+            </View>
           }
           data={feedingRecords}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
           ListFooterComponent={loading && <ActivityIndicator size="large" color="#007BFF" />}
-          contentContainerStyle={styles.container}
+          contentContainerStyle={styles.scrollViewContainer}
         />
-                      <View style={styles.logButtonContainer}>
-
-              <Button style={styles.buttonFeed} title="Log Feeding" onPress={handleLogFeeding} color="#007BFF" />
-              </View>
 
         <DateTimePickerModal
           isVisible={isDatePickerVisible}
@@ -259,7 +219,6 @@ const FeedingScreen = () => {
               >
                 <Text style={styles.modalButtonText}>Okay</Text>
               </TouchableOpacity>
-              
             </View>
           </View>
         </Modal>
@@ -270,22 +229,23 @@ const FeedingScreen = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
+    flex: 1,
     padding: 15,
     backgroundColor: '#f7f7f7',
   },
-
+  listHeader: {
+    paddingBottom: 20,
+  },
   buttonFeed: {
-    fontSize:30,
-    marginBottom:30,
-    fontFamily:'Inter'
+    fontSize: 30,
+    marginBottom: 30,
+    fontFamily: 'Inter',
   },
   logButtonContainer: {
-    backgroundColor:'#009',
-    padding:8,
+    backgroundColor: '#009',
+    padding: 8,
     margin: 14,
-    borderRadius: 8
-
+    borderRadius: 8,
   },
   title: {
     fontSize: 28,
@@ -322,11 +282,10 @@ const styles = StyleSheet.create({
     marginTop: 5,
     textAlign: 'center',
   },
-
   itemText: {
     fontFamily: 'Inter',
-    fontWeight:'500',
-    color:'white'
+    fontWeight: '500',
+    color: 'white',
   },
   textarea: {
     height: 100,
@@ -337,12 +296,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlignVertical: 'top',
   },
+  okButton: {
+    backgroundColor: '#007BFF',
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  okButtonText: {
+    color: '#fff',
+    fontSize: 16,
+  },
   recordItem: {
     backgroundColor: 'grey',
     borderRadius: 10,
     padding: 15,
     marginBottom: 15,
     shadowColor: '#000',
+    width:'80%',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 5,
